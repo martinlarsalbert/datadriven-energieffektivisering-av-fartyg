@@ -15,3 +15,5 @@ sklearn
 seaborn
 scipy
 jupyterlab
+sympy
+dask
