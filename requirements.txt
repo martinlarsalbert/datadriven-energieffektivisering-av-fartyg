@@ -17,5 +17,8 @@ scipy
 jupyterlab
 sympy
 dask
-dask distributed
 bokeh >= 0.13.0
+scikit-learn
+jupyterlab_templates
+nbstripout
+pre-commit

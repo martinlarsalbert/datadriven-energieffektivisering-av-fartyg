@@ -27,6 +27,12 @@ class install(_install):
                 return
         else:
             raise SystemExit(r'wellp, I tried ¯\__(ツ)__/¯')
+           
+        subprocess.run(['jupyter', 'labextension', 'install', 'jupyterlab_templates'])
+        subprocess.run(['jupyter', 'serverextension', 'enable', '--py', 'jupyterlab_templates'])
+        
+           
+        
 
 
 try:
