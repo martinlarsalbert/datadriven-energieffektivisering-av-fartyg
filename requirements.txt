@@ -23,3 +23,4 @@ jupyterlab_templates
 nbstripout
 pre-commit
 folium
+azureml-core # azure ml stuff
