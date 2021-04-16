@@ -94,4 +94,9 @@ def divide(df:pd.DataFrame, trip_separator='0 days 00:00:20')->pd.DataFrame:
 
     df_starts, df_ends = get_starts_and_ends(df=df, trip_separator=trip_separator)
     df_2 = numbering(df=df, df_starts=df_starts, df_ends=df_ends)
+    
+    groups = df_2.groupby(by='trip_no')
+    trip_time = groups['trip_no'].transform(lambda x : x.index - x.index[0] )
+    df_2['trip_time'] = pd.TimedeltaIndex(trip_time)
+
     return df_2
