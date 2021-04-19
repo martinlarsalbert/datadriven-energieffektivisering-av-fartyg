@@ -18,4 +18,17 @@ def plot_map(df:pd.DataFrame, time_step='30S', width=1000, height=600, zoom_star
     f = folium.Figure(width=width, height=height)
     f.add_child(my_map)
 
+    one_trip = False
+    if 'trip_no' in df:  
+        if len(df['trip_no'].unique())==1:
+            one_trip = True
+    
+    if one_trip:
+        
+        start = df.iloc[0]
+        stop = df.iloc[-1]
+        
+        folium.Marker([start['latitude'], start['longitude']], popup="start", icon=folium.Icon(color="green", icon="play")).add_to(my_map)
+        folium.Marker([stop['latitude'], stop['longitude']], popup="stop", icon=folium.Icon(color="red", icon="stop")).add_to(my_map)
+
     return f
