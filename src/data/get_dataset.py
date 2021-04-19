@@ -8,89 +8,84 @@ subscription_id = '3e9a363e-f191-4398-bd11-d32ccef9529c'
 resource_group = 'demops'
 workspace_name = 'D2E2F'
 
-def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_rudder_angles=True):
+def get_dataset(name='tycho_short_id', n_rows = 20000)->pd.DataFrame:
+    """Load time series from dataset containing trip_no.
+
+    Parameters
+    ----------
+    name : str, optional
+        [description], by default 'tycho_short_id'
+    n_rows : int, optional
+        [description], by default 20000
+
+    Returns
+    -------
+    pd.DataFrame
+        [description]
+    """
+
 
     workspace = Workspace(subscription_id, resource_group, workspace_name)
     dataset = Dataset.get_by_name(workspace, name=name)
     
-    mask = dataset['Speed over ground (kts)'] > 0.01
-    df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
-    #df_raw = dataset.take(n_rows).to_pandas_dataframe()
+    df_raw = dataset.take(n_rows).to_pandas_dataframe()
+    df_raw = prepare(df_raw=df_raw)
     
-    df_raw.set_index('Timestamp [UTC]', inplace=True)
+    return df_raw
+
+def prepare(df_raw:pd.DataFrame)->pd.DataFrame:
+    """Fix time as indec in loaded data frame.
+
+    Parameters
+    ----------
+    df_raw : pd.DataFrame
+        [description]
+
+    Returns
+    -------
+    pd.DataFrame
+        [description]
+    """
+
+    df_raw.set_index('time', inplace=True)
     df_raw.index = pd.to_datetime(df_raw.index)
-
-    df = df_raw.rename(columns = {
-        'Latitude (deg)' : 'latitude',
-        'Longitude (deg)' : 'longitude',
-        'Course over ground (deg)' : 'cog',
-
-    })
-    df.index.name='time'
-
-    df['sog'] = df['Speed over ground (kts)']*1.852/3.6
-
-    df.drop(columns=[
-        'Speed over ground (kts)',
-    ], inplace=True)
-
-    #mask = df['sog'] > 0.01
-    #df = df.loc[mask].copy()
-
-    if rename:
-        df = rename_columns(df)
+    df_raw['trip_time'] = pd.to_timedelta(df_raw['trip_time'])
     
-    if do_calculate_rudder_angles:
-        df = calculate_rudder_angles(df=df)
+    return df_raw
 
-    return df
-
-def rename_columns(df:pd.DataFrame)->pd.DataFrame:
-    """Rename columns of the data frame
+def get_trip(trip_no:int,n_rows=None, dataset_name='tycho_short_id')->pd.DataFrame:
+    """Get time series for one specific trip
 
     Parameters
     ----------
-    df : pd.DataFrame
-        raw data
+    trip_no : int
+        the trip number to load
+    n_rows : int, optional
+        max number of rows to load, by default None
+    dataset_name : str, optional
+        [description], by default 'tycho_short_id'
 
     Returns
     -------
     pd.DataFrame
-        data frame with columns with standard names
+        [description]
     """
 
-    renames = {key:key.replace(' (kW)','').replace(' ()','').replace(' ','_').lower() for key in df.keys()}
-    df_ = df.rename(columns=renames)
-    return df_
 
-def calculate_rudder_angles(df:pd.DataFrame, inplace=True)->pd.DataFrame:
-    """Calculate "rudder angles" for the thrusters from cos/sin in the data files
+    workspace = Workspace(subscription_id, resource_group, workspace_name)
+    dataset = Dataset.get_by_name(workspace, name=dataset_name)
+    
+    mask = dataset['trip_no'] == trip_no
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        data
-    inplace : bool, optional
-        [description], by default True
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with rudder angles added and cos/sin removed.
-    """
-
-    if inplace:
-        df_ = df
+    dataset_trip = dataset.filter(mask)
+    if n_rows is None:
+        trip = dataset_trip.to_pandas_dataframe()
     else:
-        df_ = df.copy()
+        trip = dataset_trip.to_pandas_dataframe()
 
-    for i in range(1,5):
-        sin_key = 'sin_pm%i' % i
-        cos_key = 'cos_pm%i' % i
-        delta_key = 'delta_%i' % i
+    trip = prepare(trip)
 
-        df_[delta_key] = np.arctan2(df_[sin_key],df_[cos_key])
-        df_[delta_key] = np.unwrap(df_[delta_key])
-        df_.drop(columns=[sin_key,cos_key], inplace=True)
+    return trip
 
-    return df_
+
+
