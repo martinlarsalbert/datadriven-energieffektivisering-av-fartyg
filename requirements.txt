@@ -26,3 +26,4 @@ folium
 azureml-core # azure ml stuff
 plotly==4.14.3
 ipywidgets>=7.5
+papermill
