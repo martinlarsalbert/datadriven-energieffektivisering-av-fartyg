@@ -99,4 +99,43 @@ def divide(df:pd.DataFrame, trip_separator='0 days 00:00:20')->pd.DataFrame:
     trip_time = groups['trip_no'].transform(lambda x : x.index - x.index[0] )
     df_2['trip_time'] = pd.TimedeltaIndex(trip_time)
 
+    df_2 = redefine_heading(df_2)  # Note!
+    
+
+    # 0 : Helsingör -> Helsingborg
+    # 1 : Helsingör <- Helsingborg
+    df_2['trip_direction'] = groups['longitude'].transform(lambda x : 0 if(x[0] < 12.65) else 1)   
+
+
+
     return df_2
+
+def redefine_heading(df:pd.DataFrame)->pd.Series:
+    """The double ended ferry is run in reverse direction half of the time.
+    This means that the "heading" measures by the compas is 180 degrees wrong, compared to course over ground from GPS.
+    This method makes this 180 degrees heading shift whenever needed.
+
+    Parameters
+    ----------
+    trip : pd.DataFrame
+        [description]
+
+    Returns
+    -------
+    pd.Series
+        corrected heading
+    """
+
+    trips = df.groupby(by='trip_no')
+
+    for trip_no, trip in trips:
+        
+        heading = trip['heading']
+        cog = trip['cog']
+
+        if ((cog - heading).mean() > 90):
+            df.loc[trip.index,'heading'] = np.mod(heading + 180, 360)
+    
+    return df
+
+

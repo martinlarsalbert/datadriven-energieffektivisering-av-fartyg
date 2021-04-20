@@ -29,13 +29,11 @@ def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_
     df.index.name='time'
 
     df['sog'] = df['Speed over ground (kts)']*1.852/3.6
-
+    
     df.drop(columns=[
         'Speed over ground (kts)',
     ], inplace=True)
 
-    #mask = df['sog'] > 0.01
-    #df = df.loc[mask].copy()
 
     if rename:
         df = rename_columns(df)
@@ -44,6 +42,10 @@ def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_
         df = calculate_rudder_angles(df=df, drop=False)
 
     df.dropna(how='all', inplace=True, axis=1)  # remove columns with all NaN
+
+    removes = ['power_propulsion_total',  ## Same thing as "power_em_thruster_total"
+        ]
+    df.drop(columns=removes, inplace=True)
 
     return df
 
@@ -61,7 +63,7 @@ def rename_columns(df:pd.DataFrame)->pd.DataFrame:
         data frame with columns with standard names
     """
 
-    renames = {key:key.replace(' (kW)','').replace(' ()','').replace(' ','_').lower() for key in df.keys()}
+    renames = {key:key.replace(' (kW)','').replace(' (deg)','').replace(' ()','').replace(' ','_').lower() for key in df.keys()}
     df_ = df.rename(columns=renames)
     return df_
 
@@ -98,3 +100,7 @@ def calculate_rudder_angles(df:pd.DataFrame, inplace=True, drop=False)->pd.DataF
             df_.drop(columns=[sin_key,cos_key], inplace=True)
 
     return df_
+
+
+
+

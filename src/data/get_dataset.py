@@ -8,7 +8,7 @@ subscription_id = '3e9a363e-f191-4398-bd11-d32ccef9529c'
 resource_group = 'demops'
 workspace_name = 'D2E2F'
 
-def get(name='tycho_short_id', n_rows = 20000)->pd.DataFrame:
+def get(name='tycho_short_id', n_rows = 20000, drop_last_trip=True)->pd.DataFrame:
     """Load time series from dataset containing trip_no.
 
     Parameters
@@ -17,6 +17,9 @@ def get(name='tycho_short_id', n_rows = 20000)->pd.DataFrame:
         [description], by default 'tycho_short_id'
     n_rows : int, optional
         [description], by default 20000
+
+    drop_last_trip : bool
+        The last trip is most likely
 
     Returns
     -------
@@ -28,13 +31,22 @@ def get(name='tycho_short_id', n_rows = 20000)->pd.DataFrame:
     workspace = Workspace(subscription_id, resource_group, workspace_name)
     dataset = Dataset.get_by_name(workspace, name=name)
     
-    df_raw = dataset.take(n_rows).to_pandas_dataframe()
+    if n_rows is None:
+        df_raw = dataset.to_pandas_dataframe()
+    else:
+        df_raw = dataset.take(n_rows).to_pandas_dataframe()
+    
     df_raw = prepare(df_raw=df_raw)
+
+    if (not (n_rows is None)) and drop_last_trip:
+        last_trip_no = df_raw.iloc[-1]['trip_no']
+        mask = (df_raw['trip_no'] == last_trip_no)
+        df_raw=df_raw.loc[~mask].copy()
     
     return df_raw
 
 def prepare(df_raw:pd.DataFrame)->pd.DataFrame:
-    """Fix time as indec in loaded data frame.
+    """Fix time as index in loaded data frame.
 
     Parameters
     ----------
@@ -86,6 +98,8 @@ def get_trip(trip_no:int,n_rows=None, dataset_name='tycho_short_id')->pd.DataFra
     trip = prepare(trip)
 
     return trip
+
+
 
 
 
