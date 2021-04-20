@@ -43,6 +43,8 @@ def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_
     if do_calculate_rudder_angles:
         df = calculate_rudder_angles(df=df, drop=False)
 
+    df.dropna(how='all', inplace=True, axis=1)  # remove columns with all NaN
+
     return df
 
 def rename_columns(df:pd.DataFrame)->pd.DataFrame:

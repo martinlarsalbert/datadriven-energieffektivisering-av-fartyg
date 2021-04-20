@@ -8,7 +8,7 @@ subscription_id = '3e9a363e-f191-4398-bd11-d32ccef9529c'
 resource_group = 'demops'
 workspace_name = 'D2E2F'
 
-def get_dataset(name='tycho_short_id', n_rows = 20000)->pd.DataFrame:
+def get(name='tycho_short_id', n_rows = 20000)->pd.DataFrame:
     """Load time series from dataset containing trip_no.
 
     Parameters
