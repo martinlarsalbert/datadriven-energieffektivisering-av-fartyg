@@ -8,7 +8,8 @@ subscription_id = '3e9a363e-f191-4398-bd11-d32ccef9529c'
 resource_group = 'demops'
 workspace_name = 'D2E2F'
 
-def get(name='tycho_short_id', n_rows = 20000, drop_last_trip=True)->pd.DataFrame:
+
+def get(name='tycho_short_id', n_rows = None, drop_last_trip=True)->pd.DataFrame:
     """Load time series from dataset containing trip_no.
 
     Parameters
@@ -98,6 +99,34 @@ def get_trip(trip_no:int,n_rows=None, dataset_name='tycho_short_id')->pd.DataFra
     trip = prepare(trip)
 
     return trip
+
+def trip_statistics(name='tycho_short_statistics', n_rows = None)->pd.DataFrame:
+    """Get statistics from each trip
+
+    Parameters
+    ----------
+    name : str, optional
+        dataset name, by default 'tycho_short_statistics'
+    n_rows : [type], optional
+        max rows, by default None
+
+    Returns
+    -------
+    pd.DataFrame
+        trip statistics
+    """
+
+    workspace = Workspace(subscription_id, resource_group, workspace_name)
+    dataset = Dataset.get_by_name(workspace, name=name)
+    
+    if n_rows is None:
+        df_raw = dataset.to_pandas_dataframe()
+    else:
+        df_raw = dataset.take(n_rows).to_pandas_dataframe()
+
+    df_raw.set_index('trip_no', inplace=True)
+
+    return df_raw
 
 
 
