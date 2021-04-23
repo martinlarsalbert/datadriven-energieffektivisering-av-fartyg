@@ -1,7 +1,7 @@
 import folium
 import pandas as pd
 
-def plot_map(df:pd.DataFrame, time_step='30S', width=1000, height=600, zoom_start=14, color_key='cog'):
+def plot_map(df:pd.DataFrame, time_step='30S', width=1000, height=600, zoom_start=14, color_key='cog', colormap = ['green','red']):
 
 
     df_ = df.resample(time_step).mean()
@@ -11,7 +11,6 @@ def plot_map(df:pd.DataFrame, time_step='30S', width=1000, height=600, zoom_star
 
     points = df_[['latitude','longitude']].to_records(index=False)
     colors = list(df_[color_key].values)
-    colormap = ['red','green']
     line = folium.ColorLine(points, colors, colormap=colormap, opacity = 0.30, popup='out', weight=1.0)
     line.add_to(my_map)
 
