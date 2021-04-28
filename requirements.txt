@@ -29,3 +29,4 @@ ipywidgets>=7.5
 papermill
 xarray
 rise
+imageio
