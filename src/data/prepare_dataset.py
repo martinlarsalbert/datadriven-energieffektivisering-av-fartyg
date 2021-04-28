@@ -14,7 +14,12 @@ def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_
     dataset = Dataset.get_by_name(workspace, name=name)
     
     mask = dataset['Speed over ground (kts)'] > 0.01
-    df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
+    if n_rows is None:
+        df_raw = dataset.filter(mask).to_pandas_dataframe()
+    else:
+        df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
+
+
     #df_raw = dataset.take(n_rows).to_pandas_dataframe()
     
     df_raw.set_index('Timestamp [UTC]', inplace=True)
