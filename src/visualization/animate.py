@@ -16,7 +16,7 @@ def plot_thruster(ax, x,y,cos,sin, power, scale=20):
     ax.arrow(x=y, y=x, dx=-l*sin, dy=-l*cos, head_width=l/5, head_length=l/5)
     #ax.arrow(x=y, y=x, dx=l*sin, dy=-l*cos, head_width=l/5, head_length=l/5)
 
-def plot_thrusters(ax,row,lpp=50, beam=20, scale=30):
+def plot_thrusters(ax,row,lpp=50, beam=20, scale=30, positions = ['SV','SE','NV','NE']):
 
     """
     Thruster 1 – NV
@@ -25,6 +25,13 @@ def plot_thrusters(ax,row,lpp=50, beam=20, scale=30):
     Thruster 4 - SE
     """
     
+    position_map = {
+        'SV' : [-1,-1],
+        'SE' : [-1,1],
+        'NV' : [1,-1],
+        'NE' : [1,1], 
+    }
+
     ##As given by Anna:
     #positions = np.array([
     #    [1,-1],  # NV
@@ -35,19 +42,9 @@ def plot_thrusters(ax,row,lpp=50, beam=20, scale=30):
     #])
     #
     #Martins guess:
-    positions = np.array([
-        [-1,-1], # SV
-        [-1,1],  # SE
-        [1,-1],  # NV
-        [1,1],   # NE
-
-        
-    ])
+    positions_xy = np.array([position_map[position] for position in positions])
     
-    
-    
-    
-    coordinates = np.array([positions[:,0]*lpp/2, positions[:,1]*beam/2] ).T
+    coordinates = np.array([positions_xy[:,0]*lpp/2, positions_xy[:,1]*beam/2] ).T
     
     for i,position in enumerate(coordinates):
         
@@ -69,6 +66,8 @@ def plot_thrusters(ax,row,lpp=50, beam=20, scale=30):
     dx = l*np.cos(direction)
     dy = l*np.sin(direction)
     ax.arrow(x=0, y=0, dx=dy, dy=dx, head_width=l/5, head_length=l/5, color='green')
+    ax.annotate(xy=(0,0), xytext=(1.3*dy,1.3*dx), text='velocity')
+    
     
     ax.set_xlim(np.min(coordinates[:,1])-scale,np.max(coordinates[:,1])+scale)
     ax.set_ylim(np.min(coordinates[:,0])-scale,np.max(coordinates[:,0])+scale)
@@ -136,6 +135,13 @@ def create_animator(trip):
         
     return animate
 
+def normalize_power(trip):
+    trip=trip.copy()
+    power_columns = ['power_em_thruster_%i' % i for i in range(1,5)]
+    trip[power_columns]/=trip['power_em_thruster_total'].max()/4
+    return trip
+
+
 def widget(trip:pd.DataFrame)->widgets.VBox:
     """ipywidget widget stepping in the animation
 
@@ -156,8 +162,7 @@ def widget(trip:pd.DataFrame)->widgets.VBox:
     trip['trip_time_s'] = pd.TimedeltaIndex(trip['trip_time']).total_seconds()
 
     ## Normalizing:
-    power_columns = ['power_em_thruster_%i' % i for i in range(1,5)]
-    trip[power_columns]/=trip['power_em_thruster_total'].max()/4
+    trip = normalize_power(trip=trip)
 
     ## Resample:
     trip = trip.resample('2S').mean()
