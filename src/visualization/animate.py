@@ -78,7 +78,7 @@ def plot_thrusters(ax,row,lpp=50, beam=20, scale=30, positions = ['SV','SE','NV'
         ax.invert_yaxis()
         ax.invert_xaxis()
     
-def plot_thrust_allocation(row, trip, lpp=50, beam=20, scale=30):
+def plot_thrust_allocation(row, trip, lpp=50, beam=20, scale=30, positions = ['SV','SE','NV','NE']):
     
     #fig,axes=plt.subplots(ncols=2)
     fig = plt.figure(constrained_layout=True)
@@ -92,7 +92,7 @@ def plot_thrust_allocation(row, trip, lpp=50, beam=20, scale=30):
     
     ax = ax1
     
-    plot_thrusters(ax=ax, row=row, lpp=lpp, beam=beam, scale=scale)
+    plot_thrusters(ax=ax, row=row, lpp=lpp, beam=beam, scale=scale, positions=positions)
         
     ## Second plot:
     ax = ax2
@@ -124,14 +124,14 @@ def plot_thrust_allocation(row, trip, lpp=50, beam=20, scale=30):
     ax3.set_xlabel('Time [s]')
     ax3.set_ylabel('Ship speed [m/s]')
     
-def create_animator(trip):
+def create_animator(trip, positions = ['SV','SE','NV','NE']):
     trip = trip.copy()
         
     def animate(i=0):
         
         index = int(i)
         row = trip.iloc[index]
-        plot_thrust_allocation(row=row, trip=trip)
+        plot_thrust_allocation(row=row, trip=trip, positions=positions)
         
     return animate
 
@@ -142,7 +142,7 @@ def normalize_power(trip):
     return trip
 
 
-def widget(trip:pd.DataFrame)->widgets.VBox:
+def widget(trip:pd.DataFrame, positions = ['SV','SE','NV','NE'])->widgets.VBox:
     """ipywidget widget stepping in the animation
 
     Parameters
@@ -165,9 +165,9 @@ def widget(trip:pd.DataFrame)->widgets.VBox:
     trip = normalize_power(trip=trip)
 
     ## Resample:
-    trip = trip.resample('2S').mean()
+    trip = trip.resample('2S').mean().dropna()
 
-    animator = create_animator(trip=trip)
+    animator = create_animator(trip=trip, positions=positions)
 
     play = Play(
     value=0,

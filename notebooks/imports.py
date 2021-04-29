@@ -28,6 +28,5 @@ import os
 sys.path.append('../')
 from src.visualization import visualize
 from src.data import get_dataset
-from src.data import trips
 import scipy.integrate
 import seaborn as sns
