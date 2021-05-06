@@ -43,6 +43,8 @@ def get(dataset, n_rows = 0):
 
     df_2 = trips.divide(df=df, trip_separator='0 days 00:02:00')
 
+    run.log('rows', len(df_2))  # log loss metric to AML
+
     return df_2
 
 def rename_columns(df:pd.DataFrame)->pd.DataFrame:
