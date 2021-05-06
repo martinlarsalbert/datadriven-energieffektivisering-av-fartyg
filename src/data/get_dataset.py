@@ -4,11 +4,6 @@ from azureml.core import Workspace, Dataset
 import pandas as pd
 import numpy as np
 
-subscription_id = '3e9a363e-f191-4398-bd11-d32ccef9529c'
-resource_group = 'demops'
-workspace_name = 'D2E2F'
-
-
 def get(name='tycho_short_id', n_rows = None, drop_last_trip=True)->pd.DataFrame:
     """Load time series from dataset containing trip_no.
 
@@ -29,7 +24,7 @@ def get(name='tycho_short_id', n_rows = None, drop_last_trip=True)->pd.DataFrame
     """
 
 
-    workspace = Workspace(subscription_id, resource_group, workspace_name)
+    workspace = Workspace.from_config()
     dataset = Dataset.get_by_name(workspace, name=name)
     
     if n_rows is None:

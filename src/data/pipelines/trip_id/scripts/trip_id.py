@@ -1,55 +1,46 @@
-# azureml-core of version 1.0.72 or higher is required
-# azureml-dataprep[pandas] of version 1.1.34 or higher is required
-from azureml.core import Workspace, Dataset
 import pandas as pd
-import numpy as np
 
-def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_rudder_angles=True):
-    
-    workspace = Workspace.from_config()
-    
-    dataset = Dataset.get_by_name(workspace, name=name)
-    
+import os
+from azureml.core import Dataset, Run
+#import trips
+
+def get(dataset):
+
+    n_rows = 20000 
+    rename = True
+    do_calculate_rudder_angles=True
+
     mask = dataset['Speed over ground (kts)'] > 0.01
     if n_rows is None:
         df_raw = dataset.filter(mask).to_pandas_dataframe()
     else:
         df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
-
-
     #df_raw = dataset.take(n_rows).to_pandas_dataframe()
-    
+
     df_raw.set_index('Timestamp [UTC]', inplace=True)
     df_raw.index = pd.to_datetime(df_raw.index)
-
     df = df_raw.rename(columns = {
         'Latitude (deg)' : 'latitude',
         'Longitude (deg)' : 'longitude',
         'Course over ground (deg)' : 'cog',
-
     })
     df.index.name='time'
-
     df['sog'] = df['Speed over ground (kts)']*1.852/3.6
-    
+
     df.drop(columns=[
         'Speed over ground (kts)',
     ], inplace=True)
-
-
     if rename:
         df = rename_columns(df)
-    
+
     if do_calculate_rudder_angles:
         df = calculate_rudder_angles(df=df, drop=False)
-
     df.dropna(how='all', inplace=True, axis=1)  # remove columns with all NaN
-
     removes = ['power_propulsion_total',  ## Same thing as "power_em_thruster_total"
         ]
     df.drop(columns=removes, inplace=True)
 
-    return df
+    #df_2 = trips.divide(df=df, trip_separator='0 days 00:02:00')
 
 def rename_columns(df:pd.DataFrame)->pd.DataFrame:
     """Rename columns of the data frame
@@ -103,6 +94,7 @@ def calculate_rudder_angles(df:pd.DataFrame, inplace=True, drop=False)->pd.DataF
 
     return df_
 
-
-
-
+if __name__ == '__main__':
+    run = Run.get_context()
+    # get input dataset by name
+    dataset = run.input_datasets['blueflow_raw']

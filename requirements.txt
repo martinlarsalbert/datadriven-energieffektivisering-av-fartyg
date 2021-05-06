@@ -31,3 +31,4 @@ xarray
 rise
 imageio
 pyarrow
+azureml-widgets
