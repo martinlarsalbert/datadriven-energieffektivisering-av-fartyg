@@ -1,17 +1,18 @@
 import pandas as pd
+import numpy as np
 
 import os
+import argparse
 from azureml.core import Dataset, Run
-#import trips
+import trips
 
-def get(dataset):
-
-    n_rows = 20000 
+def get(dataset, n_rows = 0):
+     
     rename = True
     do_calculate_rudder_angles=True
 
     mask = dataset['Speed over ground (kts)'] > 0.01
-    if n_rows is None:
+    if n_rows == 0:
         df_raw = dataset.filter(mask).to_pandas_dataframe()
     else:
         df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
@@ -40,7 +41,9 @@ def get(dataset):
         ]
     df.drop(columns=removes, inplace=True)
 
-    #df_2 = trips.divide(df=df, trip_separator='0 days 00:02:00')
+    df_2 = trips.divide(df=df, trip_separator='0 days 00:02:00')
+
+    return df_2
 
 def rename_columns(df:pd.DataFrame)->pd.DataFrame:
     """Rename columns of the data frame
@@ -95,6 +98,24 @@ def calculate_rudder_angles(df:pd.DataFrame, inplace=True, drop=False)->pd.DataF
     return df_
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--data_path',
+        type=str,
+        help='Path to the training data'
+    )
+    parser.add_argument(
+        '--n_rows',
+        type=int,
+        default=0,
+        help='Max number of rows to load'
+    )
+    args = parser.parse_args()
+    
     run = Run.get_context()
     # get input dataset by name
-    dataset = run.input_datasets['blueflow_raw']
+    dataset = run.input_datasets['blue_flow_raw']
+
+    n_rows = args.n_rows
+    df2 = get(dataset=dataset, n_rows=n_rows)
