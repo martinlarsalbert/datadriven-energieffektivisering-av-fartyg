@@ -1,0 +1,10 @@
+name: pytorch-aml-env
+channels:
+    - defaults
+dependencies:
+    - python=3.8.7
+    - pandas
+    - numpy
+    - pip
+    - pip:
+        - azureml-sdk
