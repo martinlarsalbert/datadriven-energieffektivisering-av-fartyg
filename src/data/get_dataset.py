@@ -80,7 +80,7 @@ def get_trip(trip_no:int,n_rows=None, dataset_name='tycho_short_id')->pd.DataFra
     """
 
 
-    workspace = Workspace(subscription_id, resource_group, workspace_name)
+    workspace = Workspace.from_config()
     dataset = Dataset.get_by_name(workspace, name=dataset_name)
     
     mask = dataset['trip_no'] == trip_no
@@ -111,7 +111,7 @@ def trip_statistics(name='tycho_short_statistics', n_rows = None)->pd.DataFrame:
         trip statistics
     """
 
-    workspace = Workspace(subscription_id, resource_group, workspace_name)
+    workspace = Workspace.from_config()
     dataset = Dataset.get_by_name(workspace, name=name)
     
     if n_rows is None:

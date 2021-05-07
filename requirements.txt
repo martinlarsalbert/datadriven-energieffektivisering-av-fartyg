@@ -32,3 +32,4 @@ rise
 imageio
 pyarrow
 azureml-widgets
+azureml-pipeline
