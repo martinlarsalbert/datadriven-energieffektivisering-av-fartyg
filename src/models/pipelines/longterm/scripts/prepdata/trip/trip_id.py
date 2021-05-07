@@ -102,11 +102,6 @@ def calculate_rudder_angles(df:pd.DataFrame, inplace=True, drop=False)->pd.DataF
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    #parser.add_argument(
-    #    '--data_path',
-    #    type=str,
-    #    help='Path to the raw data'
-    #)
     parser.add_argument(
         '--output_data_with_id',
         type=str,
