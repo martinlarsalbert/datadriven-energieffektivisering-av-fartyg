@@ -33,3 +33,4 @@ imageio
 pyarrow
 azureml-widgets
 azureml-pipeline
+pytest
