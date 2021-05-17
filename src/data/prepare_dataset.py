@@ -4,7 +4,11 @@ from azureml.core import Workspace, Dataset
 import pandas as pd
 import numpy as np
 
-def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_rudder_angles=True):
+def get_dataset(name='tycho_short_parquet', n_rows = 20000):
+    df_raw = get_pandas(name=name, n_rows=n_rows)
+    return prepare(df_raw=df_raw, rename=rename, do_calculate_rudder_angles=do_calculate_rudder_angles)
+    
+def get_pandas(name='tycho_short_parquet', n_rows = 20000):
     
     workspace = Workspace.from_config()
     
@@ -16,11 +20,30 @@ def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_
     else:
         df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
 
+    return df_raw
 
+def get_dask(name='tycho_short_parquet', n_rows = None, sample_size=100000):
+
+    workspace = Workspace.from_config()
+    dataset = Dataset.get_by_name(workspace, name=name)
+
+    mask = dataset['Speed over ground (kts)'] > 0.01
+    if n_rows is None:
+        ds = dataset.filter(mask)
+    else:
+        ds = dataset.filter(mask).take(n_rows)
+    
+
+
+    df_raw = ds.to_dask_dataframe(sample_size=sample_size, dtypes=None, on_error='null', out_of_range_datetime='null')
+    return df_raw
+
+def prepare(df_raw:pd.DataFrame, rename = True, do_calculate_rudder_angles=True):
     #df_raw = dataset.take(n_rows).to_pandas_dataframe()
     
     df_raw.set_index('Timestamp [UTC]', inplace=True)
     df_raw.index = pd.to_datetime(df_raw.index)
+    df_raw.sort_index(inplace=True)
 
     df = df_raw.rename(columns = {
         'Latitude (deg)' : 'latitude',
@@ -48,6 +71,38 @@ def get_dataset(name='tycho_short', n_rows = 20000, rename = True, do_calculate_
     removes = ['power_propulsion_total',  ## Same thing as "power_em_thruster_total"
         ]
     df.drop(columns=removes, inplace=True)
+
+    return df
+
+def numbering(df:pd.DataFrame, start_number:int, trip_separator='0 days 00:00:20')->pd.DataFrame:
+    """Add a trip number to each row in df
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        data (all data or partition of data)
+    start_number : 
+        start of the numbering (not 0 if this is not the first dask partion)
+
+    Returns
+    -------
+    pd.DataFrame
+        df
+    """
+    
+    df_starts, df_ends = get_starts_and_ends(df=df, trip_separator=trip_separator)
+
+    end_number = start_number + len(df_starts)
+    df_starts['trip_no'] = np.arange(start_number, end_number,dtype=int)
+    for (start_time, start), (end_time, end) in zip(df_starts.iterrows(), df_ends.iterrows()):
+        
+        mask = ((start_time <= df.index) & 
+                (df.index <= end_time)
+               )
+        
+        df.loc[mask,'trip_no'] = start['trip_no']
+        
+    #df = df.dropna(subset=['trip_no'])  # drop unfinnished trips
 
     return df
 

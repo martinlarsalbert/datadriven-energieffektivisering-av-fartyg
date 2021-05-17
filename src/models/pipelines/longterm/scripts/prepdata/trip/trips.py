@@ -18,51 +18,58 @@ def get_starts_and_ends(df:pd.DataFrame, trip_separator='0 days 00:00:20')->(pd.
         dataframes with rows from df with starts and ends.
     """
     
-    df.sort_index(inplace=True)
+    
+    def starts(df):
+        mask = df['time'].diff() > pd.Timedelta(trip_separator)
+        df_starts = df.loc[mask]
 
-    mask = df.index.to_series().diff() > trip_separator
-    
-    df_starts = df.loc[mask].copy()
-    
-    mask = np.roll(mask,-1)
-    mask[-1] = False
-    df_ends = df.loc[mask].copy()
+        return df_starts
+
+    def ends(df):
+
+        mask = df['time'].diff() > pd.Timedelta(trip_separator)
+        mask = np.roll(mask,-1)
+        mask[-1] = False
+        df_ends = df.loc[mask]
+
+        return df_ends
+
+
+    df_starts = df.map_partitions(func=starts).compute()
+    df_ends = df.map_partitions(func=ends).compute()
     
     # Removing end of first incomplete trip
-    if df_ends.index[0] < df_starts.index[0]:
-        df_ends=df_ends.iloc[1:].copy()
+    if df_ends.iloc[0]['time'] < df_starts.iloc[0]['time']:
+        df_ends=df_ends.iloc[1:]
     
     # Removing start of last incomplete trip
-    if df_starts.index[-1] > df_ends.index[-1]:
-        df_starts=df_starts.iloc[0:-1].copy()
-    
-        
+    if df_starts.iloc[-1]['time'] > df_ends.iloc[-1]['time']:
+        df_starts=df_starts.iloc[0:-1]
+            
     assert len(df_starts) == len(df_ends)
 
     return df_starts,df_ends
 
-def numbering(df:pd.DataFrame, df_starts:pd.DataFrame, df_ends:pd.DataFrame)->pd.DataFrame:
+def numbering(df:pd.DataFrame, start_number:int, trip_separator='0 days 00:00:20')->pd.DataFrame:
     """Add a trip number to each row in df
 
     Parameters
     ----------
     df : pd.DataFrame
-        [description]
-    df_starts : pd.DataFrame
-        [description]
-    df_ends : pd.DataFrame
-        [description]
+        data (all data or partition of data)
+    start_number : 
+        start of the numbering (not 0 if this is not the first dask partion)
 
     Returns
     -------
     pd.DataFrame
         df
-        new copy of df with numbering.
     """
+    
+    df_starts, df_ends = get_starts_and_ends(df=df, trip_separator=trip_separator)
 
-    df = df.copy()
-
-    df_starts['trip_no'] = np.arange(len(df_starts),dtype=int)
+    end_number = start_number + len(df_starts)
+    df_starts['trip_no'] = np.arange(start_number, end_number,dtype=int)
     for (start_time, start), (end_time, end) in zip(df_starts.iterrows(), df_ends.iterrows()):
         
         mask = ((start_time <= df.index) & 
@@ -71,7 +78,7 @@ def numbering(df:pd.DataFrame, df_starts:pd.DataFrame, df_ends:pd.DataFrame)->pd
         
         df.loc[mask,'trip_no'] = start['trip_no']
         
-    df.dropna(subset=['trip_no'], inplace=True)  # drop unfinnished trips
+    #df = df.dropna(subset=['trip_no'])  # drop unfinnished trips
 
     return df
 
@@ -92,11 +99,10 @@ def divide(df:pd.DataFrame, trip_separator='0 days 00:00:20')->pd.DataFrame:
         [description]
     """
 
-    df_starts, df_ends = get_starts_and_ends(df=df, trip_separator=trip_separator)
-    df_2 = numbering(df=df, df_starts=df_starts, df_ends=df_ends)
+    df_2 = numbering(df=df, trip_separator=trip_separator)
     
     groups = df_2.groupby(by='trip_no')
-    trip_time = groups['trip_no'].transform(lambda x : x.index - x.index[0] )
+    trip_time = groups['trip_no'].transform(lambda x : x['time'] - x.iloc[0]['time'] )
     df_2['trip_time'] = pd.TimedeltaIndex(trip_time)
 
     df_2 = redefine_heading(df_2)  # Note!

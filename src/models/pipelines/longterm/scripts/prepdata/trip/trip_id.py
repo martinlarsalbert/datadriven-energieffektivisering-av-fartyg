@@ -6,20 +6,25 @@ import argparse
 from azureml.core import Dataset, Run
 import trips
 
-def get(dataset, n_rows = 0):
+def get(dataset, n_rows = 10000):
      
     rename = True
     do_calculate_rudder_angles=True
 
-    mask = dataset['Speed over ground (kts)'] > 0.01
-    if n_rows == 0:
-        df_raw = dataset.filter(mask).to_pandas_dataframe()
-    else:
-        df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
-    #df_raw = dataset.take(n_rows).to_pandas_dataframe()
+    #if n_rows == 0:
+    #    df_raw = dataset.filter(mask).to_pandas_dataframe()
+    #else:
+    #    df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
 
-    df_raw.set_index('Timestamp [UTC]', inplace=True)
-    df_raw.index = pd.to_datetime(df_raw.index)
+    mask = dataset['Speed over ground (kts)'] > 0.01
+    df_raw = dataset.filter(mask).to_dask_dataframe(sample_size=n_rows, dtypes=None, on_error='null', out_of_range_datetime='null')
+
+    #df_raw = df_raw.set_index('Timestamp [UTC]')
+    #df_raw.index = df_raw.index.astype('M8[ns]')
+    
+    df_raw['time'] = df_raw['Timestamp [UTC]'].astype('M8[ns]')
+    df_raw = df_raw.drop(columns=['Timestamp [UTC]'])
+
     df = df_raw.rename(columns = {
         'Latitude (deg)' : 'latitude',
         'Longitude (deg)' : 'longitude',
@@ -28,24 +33,44 @@ def get(dataset, n_rows = 0):
     df.index.name='time'
     df['sog'] = df['Speed over ground (kts)']*1.852/3.6
 
-    df.drop(columns=[
+    df = df.drop(columns=[
         'Speed over ground (kts)',
-    ], inplace=True)
+    ])
+    
     if rename:
         df = rename_columns(df)
 
     if do_calculate_rudder_angles:
         df = calculate_rudder_angles(df=df, drop=False)
-    df.dropna(how='all', inplace=True, axis=1)  # remove columns with all NaN
+    df = df.dropna(how='all')  # remove columns with all NaN
+    
     removes = ['power_propulsion_total',  ## Same thing as "power_em_thruster_total"
         ]
-    df.drop(columns=removes, inplace=True)
+    df = df.drop(columns=removes)
 
-    df_2 = trips.divide(df=df, trip_separator='0 days 00:02:00')
+    df_2 = df
 
-    run.log('rows', len(df_2))  # log loss metric to AML
+    #df_2 = trips.divide(df=df, trip_separator='0 days 00:02:00')
+
+    #run.log('rows', len(df_2))  # log loss metric to AML
 
     return df_2
+
+def prepare(dataset, n_rows = 10000):
+
+    mask = dataset['Speed over ground (kts)'] > 0.01
+    
+    dataset_filter = dataset.filter(mask)
+
+    #if n_rows == 0:
+    #    df_raw = dataset.filter(mask).to_pandas_dataframe()
+    #else:
+    #    df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
+
+    df_raw = dataset.to_dask_dataframe(sample_size=n_rows, dtypes=None, on_error='null', out_of_range_datetime='null')
+
+
+
 
 def rename_columns(df:pd.DataFrame)->pd.DataFrame:
     """Rename columns of the data frame
@@ -61,7 +86,7 @@ def rename_columns(df:pd.DataFrame)->pd.DataFrame:
         data frame with columns with standard names
     """
 
-    renames = {key:key.replace(' (kW)','').replace(' (deg)','').replace(' ()','').replace(' ','_').lower() for key in df.keys()}
+    renames = {key:key.replace(' (kW)','').replace(' (deg)','').replace(' ()','').replace(' ','_').lower() for key in df.columns}
     df_ = df.rename(columns=renames)
     return df_
 
@@ -95,7 +120,7 @@ def calculate_rudder_angles(df:pd.DataFrame, inplace=True, drop=False)->pd.DataF
         #df_[delta_key] = np.unwrap(df_[delta_key])
         
         if drop:
-            df_.drop(columns=[sin_key,cos_key], inplace=True)
+            df_ = df_.drop(columns=[sin_key,cos_key])
 
     return df_
 
