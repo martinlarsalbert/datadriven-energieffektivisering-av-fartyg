@@ -5,13 +5,35 @@ import os
 import argparse
 from azureml.core import Dataset, Run
 
-def get(dataset):
+def work(dataset, path:str, sample_size=1000000):
          
-    df = dataset.to_pandas_dataframe()
+    df = dataset.to_dask_dataframe(sample_size=sample_size, dtypes=None, on_error='null', out_of_range_datetime='null')
+    process(df=df, path=path)
+    
+def process(df,path:str):
+
+    df_statistics = statistics(df=df)
+    df_statistics.to_parquet(path)
+    return df_statistics
+
+def statistics(df):
 
     trips = df.groupby(by='trip_no')
-    df_mean = trips.mean()
-    return df_mean
+    
+    meta = meta=dict(df.dtypes)
+    meta.pop('time')
+    meta['trip_time'] = int
+    return trips.apply(func=trip_statistics, meta=meta).compute()
+
+def trip_statistics(trip):
+
+    assert isinstance(trip, pd.DataFrame)
+    
+    trip['time'] = pd.to_datetime(trip['time'])
+    trip['trip_time'] = pd.TimedeltaIndex(trip['time'] - trip['time'].min()).total_seconds()
+
+    return trip.mean()
+
 
 if __name__ == '__main__':
 
@@ -28,12 +50,11 @@ if __name__ == '__main__':
     # get input dataset by name
     dataset = run.input_datasets['data_with_id']
         
-    df = get(dataset=dataset)
-
+    
 
     if not (args.output_trip_statistics is None):
         os.makedirs(args.output_trip_statistics, exist_ok=True)
         print("%s created" % args.output_trip_statistics)
         path = args.output_trip_statistics + "/processed.parquet"
-        
-        write_df = df.to_parquet(path)
+                
+        df = work(dataset=dataset, path=path)

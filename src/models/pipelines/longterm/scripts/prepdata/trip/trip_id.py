@@ -35,7 +35,7 @@ def work(ds, output_path:str, sample_size=1000000, n_rows = None):
     
     save_numbered_trips(df=df, output_path=output_path)
     
-def save_numbered_trips(df, output_path:str):
+def save_numbered_trips(df, output_path:str, max_skip=3):
     """Divide the data into trips and give each trip a unique number "trip_no"
     The data is saved to a parquet file.
     
@@ -51,13 +51,19 @@ def save_numbered_trips(df, output_path:str):
     
     parquet_schema = None
     
+    skips=0
     for i,partition in enumerate(df.partitions):
 
         try:
             df_raw = partition.compute()
         except ValueError:
-            print(f'skipping partition:{i}')
-            continue
+            if skips<max_skip:
+                print(f'skipping partition:{i}')
+                skips+=1
+                continue
+            else:
+                print(f'max_skip={max_skip} breaking...')
+                break
 
         df_ = prepare_dataset.prepare(df_raw=df_raw)
         trips.numbering(df=df_, start_number=current_trip_no)
