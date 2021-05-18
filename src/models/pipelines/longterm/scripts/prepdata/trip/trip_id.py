@@ -5,124 +5,77 @@ import os
 import argparse
 from azureml.core import Dataset, Run
 import trips
+import prepare_dataset
 
-def get(dataset, n_rows = 10000):
-     
-    rename = True
-    do_calculate_rudder_angles=True
+import azureml.core
 
-    #if n_rows == 0:
-    #    df_raw = dataset.filter(mask).to_pandas_dataframe()
-    #else:
-    #    df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
+import pyarrow as pa
+import pyarrow.parquet as pq
 
-    mask = dataset['Speed over ground (kts)'] > 0.01
-    df_raw = dataset.filter(mask).to_dask_dataframe(sample_size=n_rows, dtypes=None, on_error='null', out_of_range_datetime='null')
-
-    #df_raw = df_raw.set_index('Timestamp [UTC]')
-    #df_raw.index = df_raw.index.astype('M8[ns]')
-    
-    df_raw['time'] = df_raw['Timestamp [UTC]'].astype('M8[ns]')
-    df_raw = df_raw.drop(columns=['Timestamp [UTC]'])
-
-    df = df_raw.rename(columns = {
-        'Latitude (deg)' : 'latitude',
-        'Longitude (deg)' : 'longitude',
-        'Course over ground (deg)' : 'cog',
-    })
-    df.index.name='time'
-    df['sog'] = df['Speed over ground (kts)']*1.852/3.6
-
-    df = df.drop(columns=[
-        'Speed over ground (kts)',
-    ])
-    
-    if rename:
-        df = rename_columns(df)
-
-    if do_calculate_rudder_angles:
-        df = calculate_rudder_angles(df=df, drop=False)
-    df = df.dropna(how='all')  # remove columns with all NaN
-    
-    removes = ['power_propulsion_total',  ## Same thing as "power_em_thruster_total"
-        ]
-    df = df.drop(columns=removes)
-
-    df_2 = df
-
-    #df_2 = trips.divide(df=df, trip_separator='0 days 00:02:00')
-
-    #run.log('rows', len(df_2))  # log loss metric to AML
-
-    return df_2
-
-def prepare(dataset, n_rows = 10000):
-
-    mask = dataset['Speed over ground (kts)'] > 0.01
-    
-    dataset_filter = dataset.filter(mask)
-
-    #if n_rows == 0:
-    #    df_raw = dataset.filter(mask).to_pandas_dataframe()
-    #else:
-    #    df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
-
-    df_raw = dataset.to_dask_dataframe(sample_size=n_rows, dtypes=None, on_error='null', out_of_range_datetime='null')
-
-
-
-
-def rename_columns(df:pd.DataFrame)->pd.DataFrame:
-    """Rename columns of the data frame
+def work(ds, output_path:str, sample_size=1000000, n_rows = None):
+    """Do the work in this pipeline:
+    1) Load data into a Dask dataframe
+    2) Divide into numbered trips
+    3) Save the data with numbered trips ("trip_no" column) into a parquet file.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        raw data
-
-    Returns
-    -------
-    pd.DataFrame
-        data frame with columns with standard names
+    ds : azureml.core.Dataset
+        Dataset from AML
+    output_path : str
+        Path to pipeline output file (parquet file)
+    sample_size : int, optional
+        The dask dataframe is partitioned, as it is larger than the memory can handle, by default 100000 rows.
+    n_rows : int, default: None --> All rows used.
+        Number of rows used in this pipeline
     """
-
-    renames = {key:key.replace(' (kW)','').replace(' (deg)','').replace(' ()','').replace(' ','_').lower() for key in df.columns}
-    df_ = df.rename(columns=renames)
-    return df_
-
-def calculate_rudder_angles(df:pd.DataFrame, inplace=True, drop=False)->pd.DataFrame:
-    """Calculate "rudder angles" for the thrusters from cos/sin in the data files
-
+    
+    ds_filtered = prepare_dataset.filter(dataset=ds, n_rows = n_rows)
+    df = ds_filtered.to_dask_dataframe(sample_size=sample_size, dtypes=None, on_error='null', out_of_range_datetime='null')
+    
+    save_numbered_trips(df=df, output_path=output_path)
+    
+def save_numbered_trips(df, output_path:str):
+    """Divide the data into trips and give each trip a unique number "trip_no"
+    The data is saved to a parquet file.
+    
     Parameters
     ----------
-    df : pd.DataFrame
-        data
-    inplace : bool, optional
-        [description], by default True
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with rudder angles added and cos/sin removed.
+    df : dask.dataframe.DataFrame
+        Large dataframe with data from operation
+    output_path : str
+        Path to the parquet file that is created with the numbered trips 
     """
+    
+    current_trip_no = 0
+    
+    parquet_schema = None
+    
+    for i,partition in enumerate(df.partitions):
 
-    if inplace:
-        df_ = df
-    else:
-        df_ = df.copy()
+        try:
+            df_raw = partition.compute()
+        except ValueError:
+            print(f'skipping partition:{i}')
+            continue
 
-    for i in range(1,5):
-        sin_key = 'sin_pm%i' % i
-        cos_key = 'cos_pm%i' % i
-        delta_key = 'delta_%i' % i
+        df_ = prepare_dataset.prepare(df_raw=df_raw)
+        trips.numbering(df=df_, start_number=current_trip_no)
+        current_trip_no = df_.iloc[-1]['trip_no']
 
-        df_[delta_key] = np.arctan2(df_[sin_key],-df_[cos_key])
-        #df_[delta_key] = np.unwrap(df_[delta_key])
-        
-        if drop:
-            df_ = df_.drop(columns=[sin_key,cos_key])
+        df_['time'] = df_.index.astype(str)
+        df_.reset_index(inplace=True, drop=True)
 
-    return df_
+        # Write df partiotion to the parquet file
+        if parquet_schema is None:
+            parquet_schema = pa.Table.from_pandas(df=df_).schema
+            parquet_writer = pq.ParquetWriter(output_path, parquet_schema, compression='snappy')
+
+        table = pa.Table.from_pandas(df_, schema=parquet_schema)
+        parquet_writer.write_table(table)
+
+    parquet_writer.close()
+
 
 if __name__ == '__main__':
 
@@ -145,18 +98,15 @@ if __name__ == '__main__':
     dataset = run.input_datasets['blue_flow_raw']
 
     n_rows = args.n_rows
-    df2 = get(dataset=dataset, n_rows=n_rows)
-    run.log(name='rows', value=len(df2))
+    if n_rows==0:
+        n_rows=None
 
     if not (args.output_data_with_id is None):
         os.makedirs(args.output_data_with_id, exist_ok=True)
         print("%s created" % args.output_data_with_id)
-        path = args.output_data_with_id + "/processed.parquet"
+        output_path = args.output_data_with_id + "/processed.parquet"
         
-        df_2_save = df2.copy()
-        df_2_save.reset_index(inplace=True)
-        df_2_save['time'] = df_2_save['time'].astype(str)
-        df_2_save['trip_time'] = df_2_save['trip_time'].astype(str)
-        df_2_save['trip_no'] = df_2_save['trip_no'].astype(int)
+        work(ds=dataset, output_path=output_path, n_rows=n_rows)
     
-        write_df = df_2_save.to_parquet(path)
+
+    

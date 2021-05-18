@@ -5,37 +5,36 @@ import pandas as pd
 import numpy as np
 
 def get_dataset(name='tycho_short_parquet', n_rows = 20000):
-    df_raw = get_pandas(name=name, n_rows=n_rows)
-    return prepare(df_raw=df_raw, rename=rename, do_calculate_rudder_angles=do_calculate_rudder_angles)
-    
-def get_pandas(name='tycho_short_parquet', n_rows = 20000):
-    
-    workspace = Workspace.from_config()
-    
-    dataset = Dataset.get_by_name(workspace, name=name)
-    
-    mask = dataset['Speed over ground (kts)'] > 0.01
-    if n_rows is None:
-        df_raw = dataset.filter(mask).to_pandas_dataframe()
-    else:
-        df_raw = dataset.filter(mask).take(n_rows).to_pandas_dataframe()
-
-    return df_raw
-
-def get_dask(name='tycho_short_parquet', n_rows = None, sample_size=100000):
-
     workspace = Workspace.from_config()
     dataset = Dataset.get_by_name(workspace, name=name)
+
+    ds = filter(dataset=dataset, n_rows=n_rows)
+
+    return ds
+
+def filter(dataset,n_rows = 20000):
 
     mask = dataset['Speed over ground (kts)'] > 0.01
     if n_rows is None:
         ds = dataset.filter(mask)
     else:
         ds = dataset.filter(mask).take(n_rows)
+
+    return ds
+
+
+def get_pandas(name='tycho_short_parquet', n_rows = 20000):
     
+    ds = get_dataset(name=name, n_rows=n_rows)
+    df_raw = ds.to_pandas_dataframe()
+    
+    return df_raw
 
+def get_dask(name='tycho_short_parquet', n_rows = None, sample_size=100000):
 
+    ds = get_dataset(name=name, n_rows=n_rows)
     df_raw = ds.to_dask_dataframe(sample_size=sample_size, dtypes=None, on_error='null', out_of_range_datetime='null')
+    
     return df_raw
 
 def prepare(df_raw:pd.DataFrame, rename = True, do_calculate_rudder_angles=True):
