@@ -27,8 +27,9 @@ def get_pandas(name='tycho_short_parquet', n_rows = 20000):
     
     ds = get_dataset(name=name, n_rows=n_rows)
     df_raw = ds.to_pandas_dataframe()
+    df = prepare(df_raw=df_raw)
     
-    return df_raw
+    return df
 
 def get_dask(name='tycho_short_parquet', n_rows = None, sample_size=100000):
 

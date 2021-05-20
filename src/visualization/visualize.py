@@ -1,6 +1,14 @@
 import folium
 import pandas as pd
 
+def get_map(df:pd.DataFrame, width=1000, height=600, zoom_start=14):
+
+    my_map = folium.Map(location=(df['latitude'].mean(),df['longitude'].mean()), zoom_start=zoom_start)
+    f = folium.Figure(width=width, height=height)
+    f.add_child(my_map)
+
+    return f,my_map
+
 def plot_map(df:pd.DataFrame, time_step='30S', width=1000, height=600, zoom_start=14, color_key='cog', colormap = ['green','red']):
 
 
@@ -36,9 +44,7 @@ def plot_map(df:pd.DataFrame, time_step='30S', width=1000, height=600, zoom_star
 
 def plot_trips(df:pd.DataFrame, time_step='30S', width=1000, height=600, zoom_start=14, color_key='cog', colormap = ['green','red']):
 
-    my_map = folium.Map(location=(df['latitude'].mean(),df['longitude'].mean()), zoom_start=zoom_start)
-    f = folium.Figure(width=width, height=height)
-    f.add_child(my_map)
+    f,my_map = get_map(df=df, width=width, height=height, zoom_start=zoom_start)
 
     for trip_no, trip in df.groupby('trip_no'):
 
