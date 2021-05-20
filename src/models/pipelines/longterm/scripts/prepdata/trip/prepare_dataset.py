@@ -37,7 +37,7 @@ def get_dask(name='tycho_short_parquet', n_rows = None, sample_size=100000):
     
     return df_raw
 
-def prepare(df_raw:pd.DataFrame, rename = True, do_calculate_rudder_angles=True):
+def prepare(df_raw:pd.DataFrame, rename = True, do_calculate_rudder_angles=False):
     #df_raw = dataset.take(n_rows).to_pandas_dataframe()
     
     df_raw.set_index('Timestamp [UTC]', inplace=True)

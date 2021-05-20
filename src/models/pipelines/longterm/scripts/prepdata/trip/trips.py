@@ -1,46 +1,6 @@
 import pandas as pd
 import numpy as np
 
-def get_starts_and_ends(df:pd.DataFrame, trip_separator='0 days 00:00:20')->(pd.DataFrame, pd.DataFrame):
-    """get start and end of complete trips from df.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Time series for all trips
-    trip_separator : str, optional
-        Time windows in the dataframe exceeding this time will divide the trips, by default '0 days 00:00:20'
-
-    Returns
-    -------
-    (pd.DataFrame, pd.DataFrame)
-        df_starts,df_ends
-        dataframes with rows from df with starts and ends.
-    """
-    
-    df.sort_index(inplace=True)
-
-    mask = df.index.to_series().diff() > trip_separator
-    
-    df_starts = df.loc[mask].copy()
-    
-    mask = np.roll(mask,-1)
-    mask[-1] = False
-    df_ends = df.loc[mask].copy()
-    
-    ## Removing end of first incomplete trip
-    #if df_ends.index[0] < df_starts.index[0]:
-    #    df_ends=df_ends.iloc[1:].copy()
-    #
-    ## Removing start of last incomplete trip
-    #if df_starts.index[-1] > df_ends.index[-1]:
-    #    df_starts=df_starts.iloc[0:-1].copy()
-    
-        
-    #assert len(df_starts) == len(df_ends)
-
-    return df_starts,df_ends
-
 def get_starts(df:pd.DataFrame, trip_separator='0 days 00:00:20', initial_speed_separator=0.5)->pd.DataFrame:
     """get start and end of complete trips from df.
 
@@ -107,6 +67,22 @@ def numbering(df:pd.DataFrame, start_number:int, trip_separator='0 days 00:00:20
     df['trip_no'] = df['trip_no'].fillna(start_number)
 
     return df
+
+def process(df):
+
+    groups = df.groupby(by='trip_no')
+    trip_time = groups['trip_no'].transform(lambda x : x.index - x.index[0] )
+    df['trip_time'] = pd.TimedeltaIndex(trip_time).total_seconds()
+
+    df = redefine_heading(df)  # Note!
+    
+
+    # 0 : Helsingör -> Helsingborg
+    # 1 : Helsingör <- Helsingborg
+    df['trip_direction'] = groups['longitude'].transform(lambda x : 0 if(x[0] < 12.65) else 1)
+
+    return df
+
 
 def divide(df:pd.DataFrame, trip_separator='0 days 00:00:20')->pd.DataFrame:
     """Divide into trips and number

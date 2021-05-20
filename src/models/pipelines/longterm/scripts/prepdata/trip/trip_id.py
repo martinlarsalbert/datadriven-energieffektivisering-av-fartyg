@@ -69,10 +69,12 @@ def save_numbered_trips(df, output_path:str, max_skip=3):
         trips.numbering(df=df_, start_number=current_trip_no)
         current_trip_no = df_.iloc[-1]['trip_no']
 
+        trips.process(df=df_)
+
+        # Write df partiotion to the parquet file
         df_['time'] = df_.index.astype(str)
         df_.reset_index(inplace=True, drop=True)
 
-        # Write df partiotion to the parquet file
         if parquet_schema is None:
             parquet_schema = pa.Table.from_pandas(df=df_).schema
             parquet_writer = pq.ParquetWriter(output_path, parquet_schema, compression='snappy')

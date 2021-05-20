@@ -13,7 +13,13 @@ def work(dataset, path:str, sample_size=1000000):
 def process(df,path:str):
 
     df_statistics = statistics(df=df)
-    df_statistics.to_parquet(path)
+    
+    df_save = df_statistics.copy()
+    df_save['start_time'] = df_save['start_time'].astype(str)
+    df_save['end_time'] = df_save['end_time'].astype(str)
+    
+    df_save.to_parquet(path)
+    
     return df_statistics
 
 def statistics(df):
@@ -23,7 +29,16 @@ def statistics(df):
     meta = meta=dict(df.dtypes)
     meta.pop('time')
     meta['trip_time'] = int
+    meta['start_time'] = str
+    meta['end_time'] = str
+    
     return trips.apply(func=trip_statistics, meta=meta).compute()
+
+def load_output_as_pandas_dataframe(path:str):
+    df_stat = pd.read_parquet(path)
+    df_stat['start_time'] = pd.to_datetime(df_stat['start_time'])
+    df_stat['end_time'] = pd.to_datetime(df_stat['end_time'])
+    return df_stat
 
 def trip_statistics(trip):
 
@@ -32,7 +47,12 @@ def trip_statistics(trip):
     trip['time'] = pd.to_datetime(trip['time'])
     trip['trip_time'] = pd.TimedeltaIndex(trip['time'] - trip['time'].min()).total_seconds()
 
-    return trip.mean()
+    df_statistics = trip.mean()
+    
+    df_statistics['start_time'] = trip['time'].min()
+    df_statistics['end_time'] = trip['time'].max()
+
+    return df_statistics
 
 
 if __name__ == '__main__':
