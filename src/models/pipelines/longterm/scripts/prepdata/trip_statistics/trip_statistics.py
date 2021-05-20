@@ -17,7 +17,7 @@ def process(df,path:str):
     df_save = df_statistics.copy()
     df_save['start_time'] = df_save['start_time'].astype(str)
     df_save['end_time'] = df_save['end_time'].astype(str)
-    
+        
     df_save.to_parquet(path)
     
     return df_statistics
@@ -38,6 +38,9 @@ def load_output_as_pandas_dataframe(path:str):
     df_stat = pd.read_parquet(path)
     df_stat['start_time'] = pd.to_datetime(df_stat['start_time'])
     df_stat['end_time'] = pd.to_datetime(df_stat['end_time'])
+    df_stat.sort_index(inplace=True)
+    assert (pd.TimedeltaIndex(df_stat['start_time'].diff().dropna()).total_seconds() > 0).all()  # assert that trips are ordered in time
+
     return df_stat
 
 def trip_statistics(trip):
@@ -51,6 +54,7 @@ def trip_statistics(trip):
     
     df_statistics['start_time'] = trip['time'].min()
     df_statistics['end_time'] = trip['time'].max()
+    df_statistics['trip_direction'] = trip.iloc[0]['trip_direction']
 
     return df_statistics
 
