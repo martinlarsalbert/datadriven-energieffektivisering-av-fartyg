@@ -12,7 +12,11 @@ def get_map(df:pd.DataFrame, width=1000, height=600, zoom_start=14):
 def plot_map(df:pd.DataFrame, time_step='30S', width=1000, height=600, zoom_start=14, color_key='cog', colormap = ['green','red']):
 
 
-    df_ = df.resample(time_step).mean()
+    if time_step is None:
+        df_ = df
+    else:
+        df_ = df.resample(time_step).mean()
+    
     df_.dropna(subset=['latitude','longitude'], inplace=True)
 
     my_map = folium.Map(location=(df_['latitude'].mean(),df_['longitude'].mean()), zoom_start=zoom_start)

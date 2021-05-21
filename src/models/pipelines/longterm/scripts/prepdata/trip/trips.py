@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def get_starts(df:pd.DataFrame, trip_separator='0 days 00:00:20', initial_speed_separator=0.5)->pd.DataFrame:
+def get_starts(df:pd.DataFrame, trip_separator='0 days 00:01:00', separator_max_speed=1.0, initial_speed_separator=0.05)->pd.DataFrame:
     """get start and end of complete trips from df.
 
     Parameters
@@ -21,18 +21,22 @@ def get_starts(df:pd.DataFrame, trip_separator='0 days 00:00:20', initial_speed_
     """
     
     df.sort_index(inplace=True)
-    mask = df.index.to_series().diff() > trip_separator
+    mask = (df.index.to_series().diff() > trip_separator) 
 
     ## First part can be a begining of a trip:
     if df.iloc[0]['sog'] < initial_speed_separator:
         mask[0] = True
 
-    df_starts = df.loc[mask].copy()
+    df_starts = df.loc[mask]
         
-    return df_starts
+    ## Also checking that the speed is low enough at the start:
+    mask = df_starts['sog'] < separator_max_speed
+    df_starts = df_starts.loc[mask]
+
+    return df_starts.copy()
 
 
-def numbering(df:pd.DataFrame, start_number:int, trip_separator='0 days 00:00:20', initial_speed_separator=0.5)->pd.DataFrame:
+def numbering(df:pd.DataFrame, start_number:int, trip_separator='0 days 00:00:20', initial_speed_separator=0.05)->pd.DataFrame:
     """Add a trip number to each row in df
 
     Parameters
@@ -150,5 +154,7 @@ def redefine_heading(df:pd.DataFrame)->pd.Series:
             
     
     return df
+
+
 
 

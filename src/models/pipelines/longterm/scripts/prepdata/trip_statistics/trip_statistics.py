@@ -31,32 +31,44 @@ def statistics(df):
     meta['trip_time'] = int
     meta['start_time'] = str
     meta['end_time'] = str
-    
+    meta['start_index'] = int
+    meta['end_index'] = int
+        
     return trips.apply(func=trip_statistics, meta=meta).compute()
-
-def load_output_as_pandas_dataframe(path:str):
-    df_stat = pd.read_parquet(path)
-    df_stat['start_time'] = pd.to_datetime(df_stat['start_time'])
-    df_stat['end_time'] = pd.to_datetime(df_stat['end_time'])
-    df_stat.sort_index(inplace=True)
-    assert (pd.TimedeltaIndex(df_stat['start_time'].diff().dropna()).total_seconds() > 0).all()  # assert that trips are ordered in time
-
-    return df_stat
 
 def trip_statistics(trip):
 
     assert isinstance(trip, pd.DataFrame)
     
     trip['time'] = pd.to_datetime(trip['time'])
-    trip['trip_time'] = pd.TimedeltaIndex(trip['time'] - trip['time'].min()).total_seconds()
+    
+    assert (pd.TimedeltaIndex(trip['time'].diff().dropna()).total_seconds() > 0).all()  # assert that rows are ordered in time
+    
+    start_time = trip.iloc[0]['time']
+    trip['trip_time'] = pd.TimedeltaIndex(trip['time'] - start_time).total_seconds()
 
     df_statistics = trip.mean()
+
+    df_statistics['start_time'] = start_time
+    df_statistics['end_time'] = trip.iloc[-1]['time']
+    df_statistics['start_index'] = trip.index[0]
+    df_statistics['end_index'] = trip.index[-1]
     
-    df_statistics['start_time'] = trip['time'].min()
-    df_statistics['end_time'] = trip['time'].max()
     df_statistics['trip_direction'] = trip.iloc[0]['trip_direction']
 
     return df_statistics
+
+def load_output_as_pandas_dataframe(path:str):
+    df_stat = pd.read_parquet(path)
+    
+    df_stat['start_time'] = pd.to_datetime(df_stat['start_time'])
+    df_stat['end_time'] = pd.to_datetime(df_stat['end_time'])
+    
+    df_stat.sort_values(by=['start_time'], inplace=True)
+        
+    assert (pd.TimedeltaIndex(df_stat['start_time'].diff().dropna()).total_seconds() > 0).all()  # assert that trips are ordered in time
+
+    return df_stat
 
 
 if __name__ == '__main__':

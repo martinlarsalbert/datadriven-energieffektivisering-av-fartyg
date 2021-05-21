@@ -11,6 +11,7 @@ import azureml.core
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import dask.dataframe
 
 def work(ds, output_path:str, sample_size=1000000, n_rows = None):
     """Do the work in this pipeline:
@@ -32,7 +33,7 @@ def work(ds, output_path:str, sample_size=1000000, n_rows = None):
     
     ds_filtered = prepare_dataset.filter(dataset=ds, n_rows = n_rows)
     df = ds_filtered.to_dask_dataframe(sample_size=sample_size, dtypes=None, on_error='null', out_of_range_datetime='null')
-    
+            
     save_numbered_trips(df=df, output_path=output_path)
     
 def save_numbered_trips(df, output_path:str, max_skip=3):
@@ -84,6 +85,12 @@ def save_numbered_trips(df, output_path:str, max_skip=3):
 
     parquet_writer.close()
 
+def load_output(path:str):
+    
+    df_raw = dask.dataframe.read_parquet(path)
+
+    return df_raw
+
 
 if __name__ == '__main__':
 
@@ -116,5 +123,6 @@ if __name__ == '__main__':
         
         work(ds=dataset, output_path=output_path, n_rows=n_rows)
     
+
 
     
