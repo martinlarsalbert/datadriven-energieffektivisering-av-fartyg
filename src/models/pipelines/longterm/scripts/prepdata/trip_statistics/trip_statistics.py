@@ -13,14 +13,16 @@ def work(dataset, path:str, sample_size=1000000):
 def process(df,path:str):
 
     df_statistics = statistics(df=df)
-    
-    df_save = df_statistics.copy()
-    df_save['start_time'] = df_save['start_time'].astype(str)
-    df_save['end_time'] = df_save['end_time'].astype(str)
-        
-    df_save.to_parquet(path)
+    save_to_parquet(df=df_statistics, path=path)     
     
     return df_statistics
+
+def save_to_parquet(df:pd.DataFrame, path:str):
+    
+    df_save = df.copy()
+    df_save['start_time'] = df_save['start_time'].astype(str)
+    df_save['end_time'] = df_save['end_time'].astype(str)   
+    df_save.to_parquet(path)
 
 def statistics(df):
 
