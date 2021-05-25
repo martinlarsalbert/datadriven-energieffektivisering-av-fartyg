@@ -146,7 +146,7 @@ def redefine_heading(df:pd.DataFrame)->pd.Series:
         heading = trip['heading']
         cog = trip['cog']
 
-        if ((cog - heading).mean() > 90):
+        if ((cog - heading).abs().mean() > 90):
             df.loc[trip.index,'heading'] = np.mod(heading + 180, 360)
             df.loc[trip.index,'reversing'] = True
         else:

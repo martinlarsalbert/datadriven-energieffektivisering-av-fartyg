@@ -17,10 +17,9 @@ def copy_scripts(path_experiment,
             
             shutil.copyfile(src, dst)
 
-def run_experiment(name:str,parameters:dict, path_steps = 'steps', path_experiments = 'experiments'):
+def run_experiment(name:str,parameters:dict, path_steps = 'steps', path_experiments = '.'):
     steps = [file_name for file_name in os.listdir(path_steps) if os.path.splitext(file_name)[-1]=='.ipynb']
-    
-    path_experiments = 'experiments'
+
     if not os.path.exists(path_experiments):
         os.mkdir(path_experiments)
         
