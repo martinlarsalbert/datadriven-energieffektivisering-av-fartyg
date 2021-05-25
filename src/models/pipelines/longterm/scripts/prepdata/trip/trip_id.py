@@ -49,9 +49,11 @@ def save_numbered_trips(df, output_path:str, max_skip=3):
     """
     
     current_trip_no = 0
-    
     parquet_schema = None
     
+    if os.path.exists(output_path):
+        os.remove(output_path)
+
     skips=0
     for i,partition in enumerate(df.partitions):
 

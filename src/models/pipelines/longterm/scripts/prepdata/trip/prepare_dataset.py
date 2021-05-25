@@ -38,7 +38,7 @@ def get_dask(name='tycho_short_parquet', n_rows = None, sample_size=100000):
     
     return df_raw
 
-def prepare(df_raw:pd.DataFrame, rename = True, do_calculate_rudder_angles=False):
+def prepare(df_raw:pd.DataFrame, do_calculate_rudder_angles=False):
     #df_raw = dataset.take(n_rows).to_pandas_dataframe()
     
     df_raw.set_index('Timestamp [UTC]', inplace=True)
@@ -60,8 +60,7 @@ def prepare(df_raw:pd.DataFrame, rename = True, do_calculate_rudder_angles=False
     ], inplace=True)
 
 
-    if rename:
-        df = rename_columns(df)
+    df = rename_columns(df)
     
     if do_calculate_rudder_angles:
         df = calculate_rudder_angles(df=df, drop=False)
@@ -71,38 +70,6 @@ def prepare(df_raw:pd.DataFrame, rename = True, do_calculate_rudder_angles=False
     removes = ['power_propulsion_total',  ## Same thing as "power_em_thruster_total"
         ]
     df.drop(columns=removes, inplace=True)
-
-    return df
-
-def numbering(df:pd.DataFrame, start_number:int, trip_separator='0 days 00:00:20')->pd.DataFrame:
-    """Add a trip number to each row in df
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        data (all data or partition of data)
-    start_number : 
-        start of the numbering (not 0 if this is not the first dask partion)
-
-    Returns
-    -------
-    pd.DataFrame
-        df
-    """
-    
-    df_starts, df_ends = get_starts_and_ends(df=df, trip_separator=trip_separator)
-
-    end_number = start_number + len(df_starts)
-    df_starts['trip_no'] = np.arange(start_number, end_number,dtype=int)
-    for (start_time, start), (end_time, end) in zip(df_starts.iterrows(), df_ends.iterrows()):
-        
-        mask = ((start_time <= df.index) & 
-                (df.index <= end_time)
-               )
-        
-        df.loc[mask,'trip_no'] = start['trip_no']
-        
-    #df = df.dropna(subset=['trip_no'])  # drop unfinnished trips
 
     return df
 
@@ -121,12 +88,12 @@ def rename_columns(df:pd.DataFrame)->pd.DataFrame:
     """
 
     renames = {key:key.replace(' (kW)','').replace(' (deg)','').replace(' ()','').replace(' ','_').lower() for key in df.keys()}
+    df_ = df.rename(columns=renames)
     
     renames_power = {f'power_em_thruster_{i}' : f'P{i}' for i in range(1,5)}
     renames_power['power_em_thruster_total'] = 'P'
-    renames.update(renames_power)
-
-    df_ = df.rename(columns=renames)
+    df_.rename(columns=renames_power, inplace=True)
+    
     return df_
 
 def calculate_rudder_angles(df:pd.DataFrame, inplace=True, drop=False)->pd.DataFrame:
