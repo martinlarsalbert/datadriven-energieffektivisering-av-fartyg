@@ -121,6 +121,11 @@ def rename_columns(df:pd.DataFrame)->pd.DataFrame:
     """
 
     renames = {key:key.replace(' (kW)','').replace(' (deg)','').replace(' ()','').replace(' ','_').lower() for key in df.keys()}
+    
+    renames_power = {f'power_em_thruster_{i}' : f'P{i}' for i in range(1,5)}
+    renames_power['power_em_thruster_total'] = 'P'
+    renames.update(renames_power)
+
     df_ = df.rename(columns=renames)
     return df_
 

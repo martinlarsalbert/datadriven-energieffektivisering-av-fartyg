@@ -53,6 +53,8 @@ def load_output_as_pandas_dataframe(path:str):
         
     assert (pd.TimedeltaIndex(df_stat['start_time'].diff().dropna()).total_seconds() > 0).all()  # assert that trips are ordered in time
 
+    df_stat['trip_direction'] = df_stat['trip_direction'].apply(lambda x : 'Helsingør-Helsingborg' if x==0 else 'Helsingborg-Helsingør')
+
     return df_stat
 
 

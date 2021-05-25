@@ -85,10 +85,26 @@ def save_numbered_trips(df, output_path:str, max_skip=3):
 
     parquet_writer.close()
 
-def load_output(path:str):
+def load_output_dask(path:str):
     
     df_raw = dask.dataframe.read_parquet(path)
 
+    def to_datetime(df):
+        return pd.to_datetime(df['time'])
+    
+    time = df_raw.map_partitions(func=to_datetime, meta=df_raw.dtypes).astype('datetime64[ns, UTC]')
+    df_raw.index = time
+
+    return df_raw
+
+def load_output_pandas(path:str):
+    
+    df_raw = pd.read_parquet(path)
+    df_raw['time'] = pd.to_datetime(df_raw['time'])
+    df_raw.set_index('time', inplace=True)
+    
+    df_raw.sort_index(inplace=True)
+    
     return df_raw
 
 
