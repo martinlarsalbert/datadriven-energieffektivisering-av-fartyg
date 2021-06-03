@@ -36,3 +36,4 @@ azureml-pipeline
 pytest
 statsmodels
 pykalman
+datashader
