@@ -10,14 +10,14 @@ def work(dataset, path:str, sample_size=1000000, min_trip_time=400):
     df = dataset.to_dask_dataframe(sample_size=sample_size, dtypes=None, on_error='null', out_of_range_datetime='null')
     process(df=df, path=path, min_trip_time=min_trip_time)
     
-def process(df,path:str, min_trip_time=400):
+def process(df,path:str, min_distance=4000, min_time=700):
 
-    df_cleaned = clean(df_stat=df, min_trip_time=min_trip_time)
+    df_cleaned = clean(df_stat=df, min_distance=min_distance, min_time=min_time)
     save_to_parquet(df=df_cleaned, path=path)     
     
     return df_cleaned
 
-def clean(df_stat:pd.DataFrame, min_trip_time=400)->pd.DataFrame:
+def clean(df_stat:pd.DataFrame, min_distance, min_time)->pd.DataFrame:
     """Clean the statistics, removing outliers with unrealistic trip times.
     
     min_trip_time : float
@@ -27,9 +27,10 @@ def clean(df_stat:pd.DataFrame, min_trip_time=400)->pd.DataFrame:
         pd.DataFrame: [description]
     """
 
-    mask = ((df_stat['trip_time'] > min_trip_time) )
+    mask = ((df_stat['distance'] > min_distance) & (df_stat['distance'] < df_stat['distance'].quantile(0.99)))
     df_cleaned = df_stat.loc[mask].copy()
-    mask = df_stat['trip_time'] < df_stat['trip_time'].quantile(0.99)
+    
+    mask = ((df_cleaned['trip_time'] > min_time) & (df_cleaned['trip_time'] < df_cleaned['trip_time'].quantile(0.99)))
     df_cleaned = df_cleaned.loc[mask].copy()
 
     return df_cleaned

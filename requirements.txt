@@ -37,3 +37,4 @@ pytest
 statsmodels
 pykalman
 datashader
+pyproj

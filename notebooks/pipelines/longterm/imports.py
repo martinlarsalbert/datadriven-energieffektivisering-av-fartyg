@@ -1,3 +1,4 @@
+# %load ../imports.py
 %matplotlib inline
 %load_ext autoreload
 %autoreload 2
@@ -29,6 +30,8 @@ import plotly.graph_objects as go
 import sys
 import os
 
+from sklearn.metrics import r2_score
+
 import scipy.integrate
 import seaborn as sns
 
@@ -36,25 +39,29 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 import dask.dataframe
+import statsmodels.api as sm
 
-sys.path.append('../')
+#sys.path.append('../')
 from src.visualization import visualize
 import scipy.integrate
 
 try:
     import trip_statistics
 except:
-    sys.path.append('../../../../src/models/pipelines/longterm/scripts/prepdata/trip_statistics')
+    import src.models.pipelines.longterm.scripts.prepdata.trip_statistics
+    sys.path.insert(0, src.models.pipelines.longterm.scripts.prepdata.trip_statistics.path)
     import trip_statistics
-
+    
 try:
     import trip_id,prepare_dataset,trips
 except:
-    sys.path.append('../../../../src/models/pipelines/longterm/scripts/prepdata/trip')
+    import src.models.pipelines.longterm.scripts.prepdata.trip
+    sys.path.insert(0, src.models.pipelines.longterm.scripts.prepdata.trip.path)
     import trip_id,prepare_dataset,trips
 
 try:
     import clean_statistics
 except:
-    sys.path.append('../../../../src/models/pipelines/longterm/scripts/prepdata/clean_statistics')
+    import src.models.pipelines.longterm.scripts.prepdata.clean_statistics
+    sys.path.insert(0, src.models.pipelines.longterm.scripts.prepdata.clean_statistics.path)
     import clean_statistics
