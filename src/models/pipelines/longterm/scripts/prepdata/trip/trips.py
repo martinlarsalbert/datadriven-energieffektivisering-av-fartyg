@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from pyproj import Proj
 
 def get_starts(df:pd.DataFrame, trip_separator='0 days 00:01:00', separator_max_speed=1.0, initial_speed_separator=0.05)->pd.DataFrame:
     """get start and end of complete trips from df.
@@ -72,7 +73,7 @@ def numbering(df:pd.DataFrame, start_number:int, trip_separator='0 days 00:00:20
 
     return df
 
-def process(df):
+def process(df, add_XY=True):
 
     groups = df.groupby(by='trip_no')
     trip_time = groups['trip_no'].transform(lambda x : x.index - x.index[0] )
@@ -85,6 +86,20 @@ def process(df):
     # 1 : Helsingör <- Helsingborg
     df['trip_direction'] = groups['longitude'].transform(lambda x : 0 if(x[0] < 12.65) else 1)
 
+    if add_XY:
+        df = add_XY_from_lat_lon(df)
+
+
+    return df
+
+def add_XY_from_lat_lon(df:pd.DataFrame)->pd.DataFrame:
+
+    
+    pp = Proj(proj='utm',zone=33,ellps='WGS84', preserve_units=False)
+    xx, yy = pp(df["longitude"].values, df["latitude"].values)
+
+    df["X"] = xx
+    df["Y"] = yy 
     return df
 
 

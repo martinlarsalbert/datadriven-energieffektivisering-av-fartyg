@@ -1,6 +1,7 @@
 import papermill as pm
 import os
 import shutil
+from src.logger import logger
 
 def copy_scripts(path_experiment, 
                  script_folders = ['../../../src/models/pipelines/longterm/scripts/prepdata/trip/',
@@ -37,11 +38,13 @@ def run_experiment(name:str,parameters:dict, path_steps = 'steps', path_experime
     ## Run the steps:
     for step in steps:
     
+        logger.info(f'step:{step}')
+
         output_path = os.path.join(path_experiment,step)
         if os.path.exists(output_path):
             size = os.path.getsize(output_path)
             if size > 1000:
-                print('Already run, skipping...')
+                logger.info('Already run, skipping...')
                 continue
         
         input_notebook_path = os.path.join(path_steps, step)
